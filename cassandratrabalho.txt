@@ -19,6 +19,8 @@ E faça a abertura da pasta criada via VS Code.
 
 Crie um arquivo chamado docker-compose.yml
 
+LEMBRE-SE de instalar as extensões da vs code para o docker
+
 e cole o código:
 networks: 
   cassandraCluster:
