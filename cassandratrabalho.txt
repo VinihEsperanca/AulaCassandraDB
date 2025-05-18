@@ -1,0 +1,174 @@
+Vinícius Henrique Esperança
+
+Bash
+docker pull cassandra:latest(para instalar o Cassandra)
+
+docker scout quickview cassandra:latest(verificar vulnerabilidade)
+
+docker run --name myCassandra cassandra:latest(subir um container)
+
+docker stop myCassandra
+docker rm myCassandra(excluir container)
+
+
+Visualcode
+
+Crie uma pasta chamada clusterCassandra (ou qualquer nome de sua preferência) dentro da pasta C:\users\<seu_usuario>\.
+
+E faça a abertura da pasta criada via VS Code.
+
+Crie um arquivo chamado docker-compose.yml
+
+e cole o código:
+networks: 
+  cassandraCluster:
+
+
+services: 
+  cassandra10: 
+    image: cassandra:latest 
+    container_name: cassandra10 
+    hostname: cassandra10 
+    networks: 
+      - cassandraCluster
+    ports: 
+      - "9042:9042" 
+
+    environment: &environment  
+      CASSANDRA_SEEDS: "cassandra10,cassandra20"   
+      CASSANDRA_CLUSTER_NAME: MyTestCluster 
+      CASSANDRA_DC: DC1 
+      CASSANDRA_RACK: RACK1 
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch 
+      CASSANDRA_NUM_TOKENS: 128 
+      JVM_EXTRA_OPTS: "-Xms256M -Xmx512M"
+#    mem_limit: 1g
+
+  cassandra20: 
+    image: cassandra:latest 
+    container_name: cassandra20 
+    hostname: cassandra20 
+    networks: 
+      - cassandraCluster
+    ports: 
+      - "9043:9042" 
+    environment: *environment   
+    depends_on: 
+      cassandra10:  
+        condition: service_started 
+#   mem_limit: 1g
+
+  cassandra30: 
+    image: cassandra:latest 
+    container_name: cassandra30 
+    hostname: cassandra30 
+    networks: 
+      - cassandraCluster
+    ports: 
+      - "9044:9042" 
+    environment: *environment   
+    depends_on: 
+      cassandra20:   
+       condition: service_started
+#   mem_limit: 1g
+
+
+Bash
+cd clusterCassandra
+
+docker compose up -d
+
+Para se conectar a um dos containers, digite o comando:
+
+docker exec -it cassandra10 cqlsh
+para conectar so mudar o 10 para 20 ou 30, e dps sair com o comando exit e conectar no 10 novamente
+
+crie um bash no Windows powershell
+cd clusterCassandra
+
+docker exec -it cassandra10 cqlsh
+
+
+
+Criação do Keyspace
+
+CREATE KEYSPACE exercicio    WITH REPLICATION = {     'class' : 'NetworkTopologyStrategy',     'DC1' : 2 };
+
+use exercicio;
+
+Criação da Tabela e inserção de dados
+
+
+CREATE TABLE estado (pk int, estado text, PRIMARY KEY(pk, estado));
+CREATE TABLE cidade (id int, cidade text, PRIMARY KEY(id, cidade));
+
+INSERT INTO estado (pk, estado) VALUES (1,'estado');
+
+INSERT INTO estado (pk, estado) VALUES (2,'MG');
+
+SELECT * FROM estado;
+
+ pk | estado
+----+--------
+  1 | estado
+  2 |     MG
+
+(2 rows)
+
+INSERT INTO cidade (id, cidade) VALUES (1,'EXTREMA');
+INSERT INTO cidade (id, cidade) VALUES (2,'Pão de queijo');
+
+SELECT * FROM cidade;
+
+ id | cidade
+----+---------------
+  1 |       EXTREMA
+  2 | Pão de queijo
+
+(2 rows)
+
+
+Verificação dos Dados
+Docker exec -it cassandra10 nodetool getendpoints exerciciodnv(nome da Keyspace) estado(nome da tabela) 1(chave principal);
+
+então os dados da tabela estados com chave 1 estão armazenados nos containers de IP
+172.19.0.2
+172.19.0.3
+
+EXTRA!
+Comando gerado pelo chatGPT somente para saber qual é cada container
+docker ps -q | ForEach-Object {
+>>     $id = $_
+>>     $name = docker inspect --format '{{.Name}}' $id
+>>     $ip = docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $id
+>>     "$name - $ip"
+ }
+
+
+powershell
+docker ps -q | ForEach-Object {
+    $id = $_
+    $name = docker inspect --format '{{.Name}}' $id
+    $name = $name.TrimStart("/")  # Remove a barra inicial
+    $ip = docker inspect --format "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" $id
+    Write-Output "$name - $ip"
+}
+
+
+/cassandra30 - 172.19.0.4
+/cassandra20 - 172.19.0.3
+/cassandra10 - 172.19.0.2
+
+Links Consultados
+https://www.datalib.com.br/post/como-configurar-o-cassandra-cluster-no-docker-desktop-usando-compose
+
+https://docs.datastax.com/en/cql-oss/3.3/cql/cql_reference/cqlCreateKeyspace.html
+
+https://docs.datastax.com/en/cassandra-oss/3.x/cassandra/tools/toolsCfStatsRedirect.html
+
+Ajudinha do chat mas n ajudou mto
+
+
+https://www.datalib.com.br/post/como-configurar-o-cassandra-cluster-no-docker-desktop-usando-compose
+
+https://github.com/datalibtec/cassandra/blob/main/docker-compose.yml
